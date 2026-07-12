@@ -15,6 +15,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+app.use((req, res, next) => {
+  console.log(`📡 [${req.method}] Request received at: ${req.originalUrl}`);
+  next();
+});
+
 // Basic Route
 app.get('/', (req, res) => {
   res.send('TransitOps API is running...');
