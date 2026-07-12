@@ -20,12 +20,11 @@ app.get('/', (req, res) => {
   res.send('TransitOps API is running...');
 });
 
-// Routes
-const authRoutes = require('./routes/auth');
+// Import Routes
 const vehicleRoutes = require('./routes/vehicles');
 const driverRoutes = require('./routes/drivers');
 
-app.use('/api/auth', authRoutes);
+// Mount Routes
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/drivers', driverRoutes);
 

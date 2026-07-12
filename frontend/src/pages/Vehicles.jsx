@@ -1,172 +1,237 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Truck, Trash2, ChevronDown } from 'lucide-react';
-import axios from 'axios';
+import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 
-const API_BASE = 'http://localhost:5000/api';
-const VEHICLE_STATUSES = ['All', 'Available', 'On Trip', 'In Shop', 'Retired'];
-const VEHICLE_TYPES = ['Truck', 'Van', 'Bus', 'Trailer', 'Tanker', 'Pickup'];
+const API_BASE = 'http://localhost:5000/api/vehicles';
 
-// Helper to get auth headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+const VEHICLE_STATUSES = ['All', 'Available', 'On Trip', 'In Shop', 'Retired'];
+const VEHICLE_TYPES = ['Truck', 'Van', 'Bus', 'Trailer', 'Pickup', 'Tanker'];
+
+const emptyForm = {
+  registrationNumber: '',
+  model: '',
+  type: 'Truck',
+  maxLoadCapacity: '',
+  odometer: '',
+  acquisitionCost: '',
+  status: 'Available',
 };
 
 export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [showModal, setShowModal] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [activeStatus, setActiveStatus] = useState('All');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [formErrors, setFormErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    registrationNumber: '',
-    model: '',
-    type: 'Truck',
-    maxLoadCapacity: '',
-    odometer: '',
-    acquisitionCost: '',
-  });
 
+  // ---------- Fetch vehicles ----------
   const fetchVehicles = useCallback(async () => {
     try {
       setLoading(true);
-      const params = {};
-      if (statusFilter !== 'All') params.status = statusFilter;
-      if (search) params.search = search;
+      const params = new URLSearchParams();
+      if (activeStatus !== 'All') params.set('status', activeStatus);
+      if (search.trim()) params.set('search', search.trim());
 
-      const res = await axios.get(`${API_BASE}/vehicles`, {
-        headers: getAuthHeaders(),
-        params,
-      });
-      setVehicles(res.data);
-    } catch (err) {
-      console.error('Failed to fetch vehicles:', err);
+      const res = await fetch(`${API_BASE}?${params.toString()}`);
+      if (res.ok) {
+        setVehicles(await res.json());
+      }
+    } catch {
+      // Silently handle — data will simply not load
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [activeStatus, search]);
 
   useEffect(() => {
     fetchVehicles();
   }, [fetchVehicles]);
 
-  const handleFormChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setFormError('');
+  // ---------- Form validation ----------
+  const validate = () => {
+    const errs = {};
+    if (!form.registrationNumber.trim())
+      errs.registrationNumber = 'Registration # is required';
+    if (!form.model.trim()) errs.model = 'Model is required';
+    if (!form.type) errs.type = 'Type is required';
+    if (!form.maxLoadCapacity || Number(form.maxLoadCapacity) <= 0)
+      errs.maxLoadCapacity = 'Enter a valid load capacity';
+    if (!form.acquisitionCost || Number(form.acquisitionCost) <= 0)
+      errs.acquisitionCost = 'Enter a valid cost';
+    return errs;
   };
 
+  // ---------- Submit handler ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errs = validate();
+    setFormErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     setSubmitting(true);
-    setFormError('');
+    setServerError('');
+
+    const payload = {
+      ...form,
+      maxLoadCapacity: Number(form.maxLoadCapacity),
+      odometer: Number(form.odometer) || 0,
+      acquisitionCost: Number(form.acquisitionCost),
+    };
 
     try {
-      await axios.post(`${API_BASE}/vehicles`, {
-        ...form,
-        maxLoadCapacity: Number(form.maxLoadCapacity),
-        odometer: Number(form.odometer) || 0,
-        acquisitionCost: Number(form.acquisitionCost),
-      }, { headers: getAuthHeaders() });
+      const url = editingId ? `${API_BASE}/${editingId}` : API_BASE;
+      const method = editingId ? 'PUT' : 'POST';
 
-      setShowModal(false);
-      setForm({
-        registrationNumber: '',
-        model: '',
-        type: 'Truck',
-        maxLoadCapacity: '',
-        odometer: '',
-        acquisitionCost: '',
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-      fetchVehicles();
-    } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to create vehicle');
+
+      if (!res.ok) {
+        const data = await res.json();
+        setServerError(data.message || 'Something went wrong');
+        setSubmitting(false);
+        return;
+      }
+
+      const saved = await res.json();
+
+      if (editingId) {
+        setVehicles((prev) =>
+          prev.map((v) => (v._id === editingId ? saved : v))
+        );
+      } else {
+        setVehicles((prev) => [...prev, saved]);
+      }
+
+      closeModal();
+    } catch {
+      setServerError('Network error — is the backend running?');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
-    try {
-      await axios.put(`${API_BASE}/vehicles/${id}`, { status: newStatus }, { headers: getAuthHeaders() });
-      fetchVehicles();
-    } catch (err) {
-      console.error('Failed to update status:', err);
-    }
-  };
-
+  // ---------- Delete ----------
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
+    if (!confirm('Delete this vehicle?')) return;
     try {
-      await axios.delete(`${API_BASE}/vehicles/${id}`, { headers: getAuthHeaders() });
-      fetchVehicles();
-    } catch (err) {
-      console.error('Failed to delete vehicle:', err);
+      const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+      if (res.ok) setVehicles((prev) => prev.filter((v) => v._id !== id));
+    } catch {
+      /* silent */
     }
   };
 
-  const formatCurrency = (val) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+  // ---------- Modal helpers ----------
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormErrors({});
+    setServerError('');
+    setModalOpen(true);
+  };
 
-  const formatNumber = (val) =>
-    new Intl.NumberFormat('en-US').format(val);
+  const openEdit = (vehicle) => {
+    setEditingId(vehicle._id);
+    setForm({
+      registrationNumber: vehicle.registrationNumber,
+      model: vehicle.model,
+      type: vehicle.type,
+      maxLoadCapacity: String(vehicle.maxLoadCapacity),
+      odometer: String(vehicle.odometer),
+      acquisitionCost: String(vehicle.acquisitionCost),
+      status: vehicle.status,
+    });
+    setFormErrors({});
+    setServerError('');
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormErrors({});
+    setServerError('');
+  };
+
+  // ---------- Field change ----------
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  // ---------- Input class helper ----------
+  const inputClass = (field) =>
+    `w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-all duration-200 focus:ring-2 ${
+      formErrors[field]
+        ? 'border-red-400 focus:ring-red-300 dark:border-red-500'
+        : 'border-slate-300 focus:border-indigo-400 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30'
+    }`;
+
+  // ---------- Format currency ----------
+  const fmt = (n) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+  const fmtNum = (n) =>
+    new Intl.NumberFormat('en-US').format(n);
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* -------- Page Header -------- */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
-            Vehicle Registry
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Vehicles
           </h2>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-            Manage and monitor your fleet vehicles
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Manage your fleet — {vehicles.length} vehicle{vehicles.length !== 1 && 's'}
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-medium text-sm
-                     shadow-md shadow-primary-500/25 hover:shadow-lg hover:shadow-primary-500/30 hover:-translate-y-0.5
-                     transition-all duration-200 active:translate-y-0"
+          onClick={openAdd}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="h-4 w-4" />
           Add Vehicle
         </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* -------- Toolbar -------- */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+        <div className="relative max-w-xs flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by registration or model..."
+            placeholder="Search vehicles…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                       bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                       placeholder:text-surface-400 dark:placeholder:text-surface-500
-                       focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
-                       transition-all duration-200 text-sm"
+            className="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition-all focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30"
           />
         </div>
 
-        {/* Status filters */}
-        <div className="flex flex-wrap gap-1.5">
+        {/* Status Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter className="hidden h-4 w-4 text-slate-400 sm:block" />
           {VEHICLE_STATUSES.map((s) => (
             <button
               key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200
-                ${
-                  statusFilter === s
-                    ? 'bg-primary-600 text-white shadow-md shadow-primary-500/20'
-                    : 'bg-white dark:bg-surface-800 text-surface-600 dark:text-surface-400 border border-surface-200 dark:border-surface-700 hover:border-primary-300 dark:hover:border-primary-700 hover:text-primary-600 dark:hover:text-primary-400'
-                }`}
+              onClick={() => setActiveStatus(s)}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                activeStatus === s
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
             >
               {s}
             </button>
@@ -174,112 +239,81 @@ export default function Vehicles() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
+      {/* -------- Data Table -------- */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-surface-200 dark:border-surface-800">
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Registration
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Model
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="text-right px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Max Load (kg)
-                </th>
-                <th className="text-right px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Odometer
-                </th>
-                <th className="text-right px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Acq. Cost
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-right px-5 py-3.5 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">
-                  Actions
-                </th>
+              <tr className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/50">
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Registration #</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Model</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Type</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Max Load (kg)</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Odometer</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Acquisition Cost</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Status</th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-100 dark:divide-surface-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-5 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3 text-surface-400">
-                      <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
-                      <span className="text-sm">Loading vehicles...</span>
+                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+                      <span>Loading vehicles…</span>
                     </div>
                   </td>
                 </tr>
               ) : vehicles.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-5 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3 text-surface-400">
-                      <Truck className="w-10 h-10 stroke-1" />
-                      <div>
-                        <p className="font-medium text-surface-600 dark:text-surface-300">No vehicles found</p>
-                        <p className="text-sm mt-1">Add a vehicle or adjust your filters</p>
-                      </div>
+                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                    <div className="flex flex-col items-center gap-3">
+                      <Truck className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                      <span className="text-sm">No vehicles found. Add one to get started!</span>
                     </div>
                   </td>
                 </tr>
               ) : (
-                vehicles.map((v, idx) => (
+                vehicles.map((v, i) => (
                   <tr
                     key={v._id}
-                    className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors duration-150"
-                    style={{ animationDelay: `${idx * 30}ms` }}
+                    className={`transition-colors duration-150 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 ${
+                      i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-slate-800/30'
+                    }`}
                   >
-                    <td className="px-5 py-3.5 font-semibold text-surface-900 dark:text-surface-100 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-6 py-3.5 font-mono font-semibold text-slate-900 dark:text-white">
                       {v.registrationNumber}
                     </td>
-                    <td className="px-5 py-3.5 text-surface-700 dark:text-surface-300 whitespace-nowrap">
-                      {v.model}
+                    <td className="whitespace-nowrap px-6 py-3.5 text-slate-700 dark:text-slate-300">{v.model}</td>
+                    <td className="whitespace-nowrap px-6 py-3.5 text-slate-700 dark:text-slate-300">{v.type}</td>
+                    <td className="whitespace-nowrap px-6 py-3.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                      {fmtNum(v.maxLoadCapacity)}
                     </td>
-                    <td className="px-5 py-3.5 text-surface-600 dark:text-surface-400 whitespace-nowrap">
-                      {v.type}
+                    <td className="whitespace-nowrap px-6 py-3.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                      {fmtNum(v.odometer)}
                     </td>
-                    <td className="px-5 py-3.5 text-right font-mono text-surface-700 dark:text-surface-300 whitespace-nowrap">
-                      {formatNumber(v.maxLoadCapacity)}
+                    <td className="whitespace-nowrap px-6 py-3.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                      {fmt(v.acquisitionCost)}
                     </td>
-                    <td className="px-5 py-3.5 text-right font-mono text-surface-700 dark:text-surface-300 whitespace-nowrap">
-                      {formatNumber(v.odometer)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-mono text-surface-700 dark:text-surface-300 whitespace-nowrap">
-                      {formatCurrency(v.acquisitionCost)}
-                    </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-6 py-3.5">
                       <StatusBadge status={v.status} />
                     </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Status dropdown */}
-                        <div className="relative">
-                          <select
-                            value={v.status}
-                            onChange={(e) => handleStatusChange(v._id, e.target.value)}
-                            className="appearance-none pl-2.5 pr-7 py-1.5 text-xs rounded-lg border border-surface-200 dark:border-surface-700
-                                       bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300
-                                       focus:outline-none focus:ring-2 focus:ring-primary-500/30 cursor-pointer transition-all duration-200"
-                          >
-                            {['Available', 'On Trip', 'In Shop', 'Retired'].map((s) => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400 pointer-events-none" />
-                        </div>
-                        {/* Delete */}
+                    <td className="whitespace-nowrap px-6 py-3.5 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => openEdit(v)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => handleDelete(v._id)}
-                          className="p-1.5 rounded-lg text-surface-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
-                          title="Delete vehicle"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+                          title="Delete"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -289,155 +323,168 @@ export default function Vehicles() {
             </tbody>
           </table>
         </div>
-
-        {/* Footer */}
-        {!loading && vehicles.length > 0 && (
-          <div className="px-5 py-3 border-t border-surface-200 dark:border-surface-800 text-xs text-surface-500 dark:text-surface-400">
-            Showing {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}
-          </div>
-        )}
       </div>
 
-      {/* Add Vehicle Modal */}
-      <Modal isOpen={showModal} onClose={() => { setShowModal(false); setFormError(''); }} title="Add New Vehicle">
+      {/* -------- Add / Edit Modal -------- */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit Vehicle' : 'Add Vehicle'}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {formError && (
-            <div className="px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm animate-fade-in">
-              {formError}
+          {serverError && (
+            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {serverError}
             </div>
           )}
 
+          {/* Registration # */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Registration Number
+            </label>
+            <input
+              name="registrationNumber"
+              value={form.registrationNumber}
+              onChange={handleChange}
+              className={inputClass('registrationNumber')}
+              placeholder="e.g. ABC-1234"
+            />
+            {formErrors.registrationNumber && (
+              <p className="mt-1 text-xs text-red-500">{formErrors.registrationNumber}</p>
+            )}
+          </div>
+
+          {/* Model */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Model
+            </label>
+            <input
+              name="model"
+              value={form.model}
+              onChange={handleChange}
+              className={inputClass('model')}
+              placeholder="e.g. Volvo FH16"
+            />
+            {formErrors.model && (
+              <p className="mt-1 text-xs text-red-500">{formErrors.model}</p>
+            )}
+          </div>
+
+          {/* Type + Status row */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1.5">
-                Registration Number *
-              </label>
-              <input
-                type="text"
-                name="registrationNumber"
-                value={form.registrationNumber}
-                onChange={handleFormChange}
-                required
-                placeholder="e.g. TN-01-AB-1234"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                           bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                           placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30
-                           focus:border-primary-500 transition-all duration-200 text-sm"
-              />
-            </div>
-
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1.5">
-                Model *
-              </label>
-              <input
-                type="text"
-                name="model"
-                value={form.model}
-                onChange={handleFormChange}
-                required
-                placeholder="e.g. Tata Ace"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                           bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                           placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30
-                           focus:border-primary-500 transition-all duration-200 text-sm"
-              />
-            </div>
-
             <div>
-              <label className="block text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1.5">
-                Type *
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Type
               </label>
               <select
                 name="type"
                 value={form.type}
-                onChange={handleFormChange}
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                           bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                           focus:outline-none focus:ring-2 focus:ring-primary-500/30
-                           focus:border-primary-500 transition-all duration-200 text-sm"
+                onChange={handleChange}
+                className={inputClass('type')}
               >
                 {VEHICLE_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1.5">
-                Max Load Capacity (kg) *
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Status
+              </label>
+              <select
+                name="status"
+                value={form.status}
+                onChange={handleChange}
+                className={inputClass('status')}
+              >
+                {VEHICLE_STATUSES.filter((s) => s !== 'All').map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Max Load + Odometer row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Max Load (kg)
               </label>
               <input
-                type="number"
                 name="maxLoadCapacity"
-                value={form.maxLoadCapacity}
-                onChange={handleFormChange}
-                required
+                type="number"
                 min="0"
-                placeholder="e.g. 5000"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                           bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                           placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30
-                           focus:border-primary-500 transition-all duration-200 text-sm"
+                value={form.maxLoadCapacity}
+                onChange={handleChange}
+                className={inputClass('maxLoadCapacity')}
+                placeholder="e.g. 12000"
               />
+              {formErrors.maxLoadCapacity && (
+                <p className="mt-1 text-xs text-red-500">{formErrors.maxLoadCapacity}</p>
+              )}
             </div>
-
             <div>
-              <label className="block text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1.5">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Odometer
               </label>
               <input
-                type="number"
                 name="odometer"
-                value={form.odometer}
-                onChange={handleFormChange}
-                min="0"
-                placeholder="0"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                           bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                           placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30
-                           focus:border-primary-500 transition-all duration-200 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1.5">
-                Acquisition Cost ($) *
-              </label>
-              <input
                 type="number"
-                name="acquisitionCost"
-                value={form.acquisitionCost}
-                onChange={handleFormChange}
-                required
                 min="0"
-                placeholder="e.g. 35000"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
-                           bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100
-                           placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30
-                           focus:border-primary-500 transition-all duration-200 text-sm"
+                value={form.odometer}
+                onChange={handleChange}
+                className={inputClass('odometer')}
+                placeholder="0"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          {/* Acquisition Cost */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Acquisition Cost ($)
+            </label>
+            <input
+              name="acquisitionCost"
+              type="number"
+              min="0"
+              value={form.acquisitionCost}
+              onChange={handleChange}
+              className={inputClass('acquisitionCost')}
+              placeholder="e.g. 85000"
+            />
+            {formErrors.acquisitionCost && (
+              <p className="mt-1 text-xs text-red-500">{formErrors.acquisitionCost}</p>
+            )}
+          </div>
+
+          {/* Submit */}
+          <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => { setShowModal(false); setFormError(''); }}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium text-surface-600 dark:text-surface-400
-                         hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors duration-200"
+              onClick={closeModal}
+              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-primary-600 to-primary-500 text-white
-                         shadow-md shadow-primary-500/25 hover:shadow-lg hover:shadow-primary-500/30
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-200 disabled:opacity-60"
             >
-              {submitting ? 'Adding...' : 'Add Vehicle'}
+              {submitting ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Saving…
+                </>
+              ) : editingId ? (
+                'Update Vehicle'
+              ) : (
+                'Add Vehicle'
+              )}
             </button>
           </div>
         </form>
