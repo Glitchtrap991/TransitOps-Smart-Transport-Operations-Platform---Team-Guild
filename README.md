@@ -192,5 +192,5 @@ This project is configured for decoupled cloud hosting using **Vercel** for the 
 ## 👥 Contributors (Team Guild)
 * **[Aparajith V](https://github.com/Glitchtrap991)**
 * **[Allen Joseph G](https://github.com/unknownhackerworld)** 
-* **Prasanna Venkatesan E**
+* **[Prasanna Venkatesan E](https://github.com/PrasannaVenkatesanE)**
 * **Alan Babu K** 
