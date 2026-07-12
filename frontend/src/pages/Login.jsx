@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Truck, LogIn, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export default function Login() {
     try {
       // In a real app, this points to your backend. 
       // If no users exist, you might need to hit /register first manually or create a seed script.
-      const { data } = await axios.post('http://localhost:5000/api/auth/login', {
+      const { data } = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
       });

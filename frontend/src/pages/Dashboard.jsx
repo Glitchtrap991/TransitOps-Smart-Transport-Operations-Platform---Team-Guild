@@ -7,8 +7,9 @@ import {
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 import Reports from './Reports';
+import API_BASE_URL from '../config/api';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = API_BASE_URL;
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function Dashboard() {

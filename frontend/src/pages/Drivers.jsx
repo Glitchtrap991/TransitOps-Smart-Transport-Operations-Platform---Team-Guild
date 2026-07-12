@@ -5,8 +5,9 @@ import { Search, Plus, Users, UserPlus, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
+import API_BASE_URL from '../config/api';
 
-const API_URL = 'http://localhost:5000/api/drivers';
+const API_URL = `${API_BASE_URL}/drivers`;
 const STATUSES = ['All', 'Available', 'On Trip', 'Off Duty', 'Suspended'];
 const LICENSE_CATEGORIES = ['A', 'B', 'C', 'D', 'E', 'CE', 'D1', 'C1'];
 

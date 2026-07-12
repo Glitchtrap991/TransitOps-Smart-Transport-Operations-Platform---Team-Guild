@@ -3,8 +3,9 @@ import axios from 'axios';
 import { Download, FileText, FileSpreadsheet, TrendingUp, AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import API_BASE_URL from '../config/api';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = API_BASE_URL;
 
 export default function Reports() {
   const [analytics, setAnalytics] = useState([]);

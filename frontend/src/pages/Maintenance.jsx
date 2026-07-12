@@ -4,8 +4,9 @@ import { Plus, Wrench, AlertCircle, CheckCircle2, ArrowUpDown } from 'lucide-rea
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
+import API_BASE_URL from '../config/api';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = API_BASE_URL;
 
 const emptyForm = {
   vehicle: '',
