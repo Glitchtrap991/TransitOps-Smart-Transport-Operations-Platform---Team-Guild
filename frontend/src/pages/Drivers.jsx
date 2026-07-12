@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Plus, Users, UserPlus } from 'lucide-react';
+import { Search, Plus, Users, UserPlus, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
@@ -45,9 +46,12 @@ function SafetyScoreBar({ score }) {
 }
 
 export default function Drivers() {
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get('filter') || 'All';
   const [drivers, setDrivers] = useState([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState(initialFilter);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -74,6 +78,27 @@ export default function Drivers() {
     const debounce = setTimeout(fetchDrivers, 300);
     return () => clearTimeout(debounce);
   }, [fetchDrivers]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const processedDrivers = [...drivers].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    let aVal = a[sortConfig.key];
+    let bVal = b[sortConfig.key];
+    
+    if (sortConfig.key === 'licenseExpiryDate') {
+      aVal = new Date(aVal).getTime();
+      bVal = new Date(bVal).getTime();
+    }
+    
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   // Handle form input changes
   const handleChange = (e) => {
@@ -190,14 +215,24 @@ export default function Drivers() {
                 <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">
                   Category
                 </th>
-                <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">
-                  Expiry Date
+                <th 
+                  className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('licenseExpiryDate')}
+                >
+                  <div className="flex items-center gap-1">
+                    Expiry Date <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
                 </th>
                 <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">
                   Contact
                 </th>
-                <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">
-                  Safety Score
+                <th 
+                  className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('safetyScore')}
+                >
+                  <div className="flex items-center gap-1">
+                    Safety Score <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
                 </th>
                 <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">
                   Status
@@ -224,7 +259,7 @@ export default function Drivers() {
                   </td>
                 </tr>
               ) : (
-                drivers.map((d, i) => (
+                processedDrivers.map((d, i) => (
                   <tr
                     key={d._id}
                     className={`transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${

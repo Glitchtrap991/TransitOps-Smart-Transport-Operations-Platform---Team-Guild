@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Upload } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Upload, ArrowUpDown, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
@@ -23,7 +24,11 @@ export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeStatus, setActiveStatus] = useState('All');
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get('filter') || 'All';
+  const [activeStatus, setActiveStatus] = useState(initialFilter);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [mockCompliance, setMockCompliance] = useState({ rc: true, insurance: true, puc: false });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -54,8 +59,26 @@ export default function Vehicles() {
   }, [activeStatus, search]);
 
   useEffect(() => {
-    fetchVehicles();
+    const timer = setTimeout(() => {
+      fetchVehicles();
+    }, 300);
+    return () => clearTimeout(timer);
   }, [fetchVehicles]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const processedVehicles = [...vehicles].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aVal = a[sortConfig.key];
+    const bVal = b[sortConfig.key];
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   // ---------- Form validation ----------
   const validate = () => {
@@ -287,9 +310,30 @@ export default function Vehicles() {
                 <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Registration #</th>
                 <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Model</th>
                 <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Type</th>
-                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Max Load (kg)</th>
-                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Odometer</th>
-                <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Acquisition Cost</th>
+                <th 
+                  className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('maxLoadCapacity')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Max Load (kg) <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
+                <th 
+                  className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('odometer')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Odometer <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
+                <th 
+                  className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('acquisitionCost')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Acquisition Cost <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
                 <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300">Status</th>
                 <th className="whitespace-nowrap px-6 py-3.5 font-semibold text-slate-600 dark:text-slate-300 text-right">Actions</th>
               </tr>
@@ -314,7 +358,7 @@ export default function Vehicles() {
                   </td>
                 </tr>
               ) : (
-                vehicles.map((v, i) => (
+                processedVehicles.map((v, i) => (
                   <tr
                     key={v._id}
                     className={`transition-colors duration-150 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 ${
@@ -536,6 +580,28 @@ export default function Vehicles() {
         title={`Documents: ${currentDocsVehicle?.registrationNumber || ''}`}
       >
         <div className="space-y-6">
+          {/* Mock Compliance Toggles */}
+          <div className="flex gap-4 mb-4">
+            <button 
+              onClick={() => setMockCompliance({...mockCompliance, rc: !mockCompliance.rc})}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-colors ${mockCompliance.rc ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}
+            >
+              <CheckCircle className="h-4 w-4" /> RC Verified
+            </button>
+            <button 
+              onClick={() => setMockCompliance({...mockCompliance, insurance: !mockCompliance.insurance})}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-colors ${mockCompliance.insurance ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}
+            >
+              <CheckCircle className="h-4 w-4" /> Insured
+            </button>
+            <button 
+              onClick={() => setMockCompliance({...mockCompliance, puc: !mockCompliance.puc})}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-colors ${mockCompliance.puc ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}
+            >
+              <CheckCircle className="h-4 w-4" /> PUC Validated
+            </button>
+          </div>
+
           <ul className="divide-y divide-slate-100 dark:divide-slate-800 border-b border-slate-100 dark:border-slate-800 pb-4 max-h-60 overflow-y-auto">
             {currentDocsVehicle?.documents?.length > 0 ? (
               currentDocsVehicle.documents.map((doc, i) => (

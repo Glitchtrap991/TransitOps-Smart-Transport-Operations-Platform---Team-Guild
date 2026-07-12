@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Search, Plus, MapPin, Filter, Play, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Search, Plus, MapPin, Filter, Play, CheckCircle2, XCircle, AlertCircle, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
@@ -29,9 +30,12 @@ export default function Trips() {
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get('filter') || 'All';
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeStatus, setActiveStatus] = useState('All');
+  const [activeStatus, setActiveStatus] = useState(initialFilter);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -73,8 +77,24 @@ export default function Trips() {
   }, [activeStatus]);
 
   useEffect(() => {
-    fetchData();
+    const debounce = setTimeout(fetchData, 300);
+    return () => clearTimeout(debounce);
   }, [fetchData]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const processedTrips = [...trips].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aVal = a[sortConfig.key];
+    const bVal = b[sortConfig.key];
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   // ---------- Create Trip ----------
   const handleCreateSubmit = async (e) => {
@@ -211,8 +231,22 @@ export default function Trips() {
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Route</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Vehicle</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Driver</th>
-                <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Cargo (kg)</th>
-                <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Distance (km)</th>
+                <th 
+                  className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('cargoWeight')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Cargo (kg) <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('plannedDistance')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Distance (km) <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Status</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Actions</th>
               </tr>
@@ -237,7 +271,7 @@ export default function Trips() {
                   </td>
                 </tr>
               ) : (
-                trips
+                processedTrips
                   .filter(t => search.trim() === '' || 
                     t.source.toLowerCase().includes(search.toLowerCase()) || 
                     t.destination.toLowerCase().includes(search.toLowerCase()))
@@ -393,6 +427,38 @@ export default function Trips() {
               />
             </div>
           </div>
+          
+          {/* Cargo Capacity Progress Bar (Live Validation) */}
+          {tripForm.vehicle && (
+            <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              {(() => {
+                const selectedVehicle = vehicles.find(v => v._id === tripForm.vehicle);
+                if (!selectedVehicle) return null;
+                const capacity = selectedVehicle.maxLoadCapacity || 1;
+                const cargo = Number(tripForm.cargoWeight) || 0;
+                const pct = Math.min((cargo / capacity) * 100, 100).toFixed(1);
+                const overLimit = cargo > capacity;
+                
+                return (
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-2">
+                      <span className={overLimit ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}>
+                        Capacity Utilization: {pct}%
+                      </span>
+                      <span className="text-slate-500">{cargo} / {capacity} kg</span>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                      <div 
+                        className={`h-full transition-all duration-300 ${overLimit ? 'bg-red-500' : pct > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${pct}%` }}
+                      ></div>
+                    </div>
+                    {overLimit && <p className="mt-2 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Cargo exceeds maximum capacity!</p>}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <button
@@ -449,6 +515,26 @@ export default function Trips() {
               />
             </div>
           </div>
+          
+          {/* Fuel Efficiency Preview */}
+          {selectedTripId && completeForm.fuelLiters > 0 && (
+            <div className="rounded-lg bg-blue-50/50 p-4 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900">
+              {(() => {
+                const currentTrip = trips.find(t => t._id === selectedTripId);
+                if (!currentTrip) return null;
+                const distance = currentTrip.plannedDistance || 0;
+                const liters = Number(completeForm.fuelLiters);
+                const efficiency = (distance / liters).toFixed(2);
+                
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Live Fuel Efficiency:</span>
+                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{efficiency} km/L</span>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <button

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Truck, Activity, Wrench, Navigation, Users, Percent, AlertTriangle } from 'lucide-react';
 import { 
@@ -11,6 +12,7 @@ const API_BASE = 'http://localhost:5000/api';
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [analytics, setAnalytics] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -60,12 +62,12 @@ export default function Dashboard() {
   ].filter(d => d.value > 0);
 
   const kpis = [
-    { label: 'Total Vehicles', value: totalVehicles, icon: Truck, color: 'text-indigo-600', bg: 'bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400' },
-    { label: 'Available', value: availableVehicles, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400' },
-    { label: 'In Maintenance', value: maintenanceVehicles, icon: Wrench, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400' },
-    { label: 'Active Trips', value: activeTrips, icon: Navigation, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' },
-    { label: 'Drivers On Duty', value: driversOnDuty, icon: Users, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400' },
-    { label: 'Utilization', value: `${utilization}%`, icon: Percent, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30 dark:text-rose-400' },
+    { label: 'Total Vehicles', value: totalVehicles, icon: Truck, color: 'text-indigo-600', bg: 'bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400', link: '/fleet?tab=vehicles' },
+    { label: 'Available', value: availableVehicles, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400', link: '/fleet?tab=vehicles&filter=Available' },
+    { label: 'In Maintenance', value: maintenanceVehicles, icon: Wrench, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400', link: '/fleet?tab=vehicles&filter=In Shop' },
+    { label: 'Active Trips', value: activeTrips, icon: Navigation, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400', link: '/operations?filter=Active' },
+    { label: 'Drivers On Duty', value: driversOnDuty, icon: Users, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400', link: '/fleet?tab=drivers&filter=Available' },
+    { label: 'Utilization', value: `${utilization}%`, icon: Percent, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30 dark:text-rose-400', link: null },
   ];
 
   if (loading) {
@@ -104,7 +106,11 @@ export default function Dashboard() {
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className="flex flex-col justify-center rounded-3xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60 hover:-translate-y-1 transition-transform duration-300">
+            <div 
+              key={idx} 
+              onClick={() => kpi.link && navigate(kpi.link)}
+              className={`flex flex-col justify-center rounded-3xl border border-slate-200/60 bg-white/60 p-5 shadow-sm backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60 transition-transform duration-300 ${kpi.link ? 'cursor-pointer hover:-translate-y-1 hover:shadow-md' : ''}`}
+            >
               <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl ${kpi.bg}`}>
                 <Icon className={`h-6 w-6 ${kpi.color}`} />
               </div>

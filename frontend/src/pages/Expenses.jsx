@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, DollarSign, AlertCircle } from 'lucide-react';
+import { Plus, DollarSign, AlertCircle, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 
@@ -40,6 +40,29 @@ export default function Expenses() {
     };
     fetchData();
   }, []);
+
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const processedExpenses = [...expenses].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    let aVal = a[sortConfig.key];
+    let bVal = b[sortConfig.key];
+    
+    if (sortConfig.key === 'date') {
+      aVal = new Date(aVal).getTime();
+      bVal = new Date(bVal).getTime();
+    }
+    
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,8 +110,22 @@ export default function Expenses() {
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Vehicle</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Type</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Liters (Fuel)</th>
-                <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Cost</th>
-                <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Date</th>
+                <th 
+                  className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('cost')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Cost <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('date')}
+                >
+                  <div className="flex justify-end items-center gap-1">
+                    Date <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/40 dark:divide-slate-800/60">
@@ -101,7 +138,7 @@ export default function Expenses() {
                   <td colSpan={5} className="px-6 py-16 text-center text-slate-400">No expenses found.</td>
                 </tr>
               ) : (
-                expenses.map((exp) => (
+                processedExpenses.map((exp) => (
                   <tr key={exp._id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900 dark:text-white">{exp.vehicle?.registrationNumber}</div>

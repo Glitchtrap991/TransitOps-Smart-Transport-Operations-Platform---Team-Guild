@@ -42,9 +42,17 @@ export default function Reports() {
       a.fuelEfficiency
     ]);
 
+    const timestamp = `Generated on: ${new Date().toLocaleString()}`;
+    const formulaText = `ROI Formula: ((Revenue - Total Operational Cost) / Acquisition Cost) * 100`;
+
     const csvContent = [
+      'TransitOps Official Financial Report',
+      timestamp,
+      '',
       headers.join(','),
-      ...rows.map(row => row.join(','))
+      ...rows.map(row => row.join(',')),
+      '',
+      formulaText
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -61,11 +69,11 @@ export default function Reports() {
     const doc = new jsPDF('landscape');
     
     doc.setFontSize(18);
-    doc.text('TransitOps - Fleet Financial & ROI Report', 14, 22);
+    doc.text('TransitOps Official Financial Report', 14, 22);
     
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
     const tableColumn = ['Vehicle', 'Model', 'Acq. Cost ($)', 'Maint. ($)', 'Fuel ($)', 'Ops Cost ($)', 'Revenue ($)', 'ROI (%)', 'Efficiency (km/L)'];
     const tableRows = [];
@@ -93,6 +101,11 @@ export default function Reports() {
       styles: { fontSize: 10, cellPadding: 3 },
       headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
     });
+
+    const finalY = doc.lastAutoTable.finalY || 40;
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('ROI Formula: ((Revenue - Total Operational Cost) / Acquisition Cost) * 100', 14, finalY + 10);
 
     doc.save('TransitOps_ROI_Report.pdf');
   };

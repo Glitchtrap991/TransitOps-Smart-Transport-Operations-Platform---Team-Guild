@@ -28,6 +28,7 @@ const tripRoutes = require('./routes/trips');
 const maintenanceRoutes = require('./routes/maintenance');
 const expenseRoutes = require('./routes/expenses');
 const analyticsRoutes = require('./routes/analytics');
+const demoRoutes = require('./routes/demo');
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -37,6 +38,7 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/demo', demoRoutes);
 
 const PORT = process.env.PORT || 5000;
 

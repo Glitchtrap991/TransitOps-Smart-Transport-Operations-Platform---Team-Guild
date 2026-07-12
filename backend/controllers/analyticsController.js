@@ -25,6 +25,58 @@ const getLicenseAlerts = async (req, res) => {
   }
 };
 
+// @desc    Get all active system alerts
+// @route   GET /api/analytics/system-alerts
+// @access  Protected
+const getSystemAlerts = async (req, res) => {
+  try {
+    const alerts = [];
+    
+    // 1. Expiring/Expired Licenses
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const expiringDrivers = await Driver.find({
+      licenseExpiryDate: { $lte: thirtyDaysFromNow }
+    }).select('name licenseExpiryDate');
+    
+    expiringDrivers.forEach(d => {
+      const isExpired = new Date(d.licenseExpiryDate) < new Date();
+      const days = Math.ceil((new Date(d.licenseExpiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+      alerts.push({
+        id: `lic-${d._id}`,
+        type: 'warning',
+        message: isExpired 
+          ? `⚠️ Driver ${d.name}'s commercial license has expired!` 
+          : `⚠️ Driver ${d.name}'s commercial license expires in ${days} days`
+      });
+    });
+
+    // 2. Suspended Drivers
+    const suspendedDrivers = await Driver.find({ status: 'Suspended' }).select('name');
+    suspendedDrivers.forEach(d => {
+      alerts.push({
+        id: `susp-${d._id}`,
+        type: 'critical',
+        message: `🚨 Driver ${d.name} is currently marked Suspended and locked from dispatch`
+      });
+    });
+
+    // 3. Vehicles in Shop
+    const inShopVehicles = await Vehicle.find({ status: 'In Shop' }).select('registrationNumber');
+    inShopVehicles.forEach(v => {
+      alerts.push({
+        id: `shop-${v._id}`,
+        type: 'info',
+        message: `🔧 Vehicle ${v.registrationNumber} is currently In Shop for scheduled maintenance`
+      });
+    });
+
+    res.json(alerts);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // @desc    Get ROI and Financial Analytics per Vehicle
 // @route   GET /api/analytics/roi
 // @access  Protected
@@ -96,5 +148,6 @@ const getROI = async (req, res) => {
 
 module.exports = {
   getLicenseAlerts,
+  getSystemAlerts,
   getROI,
 };

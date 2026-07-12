@@ -1,5 +1,7 @@
-import { Outlet, NavLink } from 'react-router-dom';
-import { useState, useContext } from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useContext, useRef } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -14,6 +16,7 @@ import {
   Menu,
   LogOut,
   FileText,
+  Bell,
 } from 'lucide-react';
 
 export default function Layout() {
@@ -21,6 +24,46 @@ export default function Layout() {
   const { user, logout } = useContext(AuthContext);
   const { theme, toggleTheme } = useTheme();
   const darkMode = theme === 'dark';
+  
+  const [alerts, setAlerts] = useState([]);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const { data } = await axios.get('http://localhost:5000/api/analytics/system-alerts', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setAlerts(data);
+      } catch (err) {
+        console.error('Failed to fetch system alerts', err);
+      }
+    };
+    fetchAlerts();
+
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setAlertsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleResetDemo = async () => {
+    if (window.confirm("Reset database to default hackathon demo state?")) {
+      try {
+        await axios.post('http://localhost:5000/api/demo/reset');
+        toast.success("✅ Database refreshed with realistic fleet data!");
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (error) {
+        toast.error("Failed to reset demo data.");
+      }
+    }
+  };
 
   const navLinks = [
     { to: '/', label: 'Command Center', icon: LayoutDashboard },
@@ -133,7 +176,57 @@ export default function Layout() {
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200 hidden sm:block">
             Enterprise Fleet Dashboard
           </h1>
-          <div className="flex items-center gap-3 ml-auto sm:ml-0">
+          <div className="flex items-center gap-4 ml-auto sm:ml-0">
+            <button
+              onClick={handleResetDemo}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition-colors"
+            >
+              ⚡ Reset Demo Data
+            </button>
+            
+            {/* Notifications Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setAlertsOpen(!alertsOpen)}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/50 bg-white hover:bg-slate-50 dark:border-slate-700/50 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Bell className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                {alerts.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900 animate-pulse">
+                    {alerts.length}
+                  </span>
+                )}
+              </button>
+
+              {alertsOpen && (
+                <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-800 z-50">
+                  <div className="mb-2 px-3 pt-2">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">System Alerts</h3>
+                  </div>
+                  <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
+                    {alerts.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                        No active alerts
+                      </div>
+                    ) : (
+                      alerts.map((alert) => (
+                        <div
+                          key={alert.id}
+                          className={`rounded-xl px-3 py-2.5 text-sm ${
+                            alert.type === 'critical' ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' :
+                            alert.type === 'warning' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' :
+                            'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                          }`}
+                        >
+                          {alert.message}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400 hidden sm:inline-block">
               Welcome back
             </span>

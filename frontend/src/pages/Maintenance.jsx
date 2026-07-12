@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Plus, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Wrench, AlertCircle, CheckCircle2, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
@@ -38,9 +38,32 @@ export default function Maintenance() {
     }
   }, []);
 
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const processedLogs = [...logs].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    let aVal = a[sortConfig.key];
+    let bVal = b[sortConfig.key];
+    
+    if (sortConfig.key === 'date') {
+      aVal = new Date(aVal).getTime();
+      bVal = new Date(bVal).getTime();
+    }
+    
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,8 +124,22 @@ export default function Maintenance() {
               <tr className="border-b border-slate-200/60 bg-slate-50/50 dark:border-slate-700/60 dark:bg-slate-800/30">
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Vehicle</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Description</th>
-                <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Cost</th>
-                <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Date</th>
+                <th 
+                  className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('cost')}
+                >
+                  <div className="flex items-center gap-1">
+                    Cost <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors group"
+                  onClick={() => handleSort('date')}
+                >
+                  <div className="flex items-center gap-1">
+                    Date <ArrowUpDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                  </div>
+                </th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300">Status</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-300 text-right">Actions</th>
               </tr>
@@ -117,7 +154,7 @@ export default function Maintenance() {
                   <td colSpan={6} className="px-6 py-16 text-center text-slate-400">No maintenance records found.</td>
                 </tr>
               ) : (
-                logs.map((log) => (
+                processedLogs.map((log) => (
                   <tr key={log._id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900 dark:text-white">{log.vehicle?.registrationNumber}</div>

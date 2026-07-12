@@ -1,16 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Maintenance from './Maintenance';
 import Expenses from './Expenses';
 
 export default function LogsExpenses() {
-  const [activeTab, setActiveTab] = useState('maintenance');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'maintenance';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'maintenance' || tab === 'expenses')) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    searchParams.set('tab', tab);
+    setSearchParams(searchParams);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-center sm:justify-start">
         <div className="inline-flex rounded-xl bg-slate-200/50 p-1 dark:bg-slate-800/50 backdrop-blur-md">
           <button
-            onClick={() => setActiveTab('maintenance')}
+            onClick={() => handleTabChange('maintenance')}
             className={`rounded-lg px-6 py-2 text-sm font-semibold transition-all duration-200 ${
               activeTab === 'maintenance'
                 ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
@@ -20,7 +36,7 @@ export default function LogsExpenses() {
             Maintenance Shop
           </button>
           <button
-            onClick={() => setActiveTab('expenses')}
+            onClick={() => handleTabChange('expenses')}
             className={`rounded-lg px-6 py-2 text-sm font-semibold transition-all duration-200 ${
               activeTab === 'expenses'
                 ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
