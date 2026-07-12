@@ -20,10 +20,10 @@ const seedUsers = async () => {
 
         // Prepare the 4 required role accounts[cite: 1]
         const testUsers = [
-            { email: 'manager@transitops.com', password: hashedPassword, role: 'Fleet Manager' },
-            { email: 'driver@transitops.com', password: hashedPassword, role: 'Driver' },
-            { email: 'safety@transitops.com', password: hashedPassword, role: 'Safety Officer' },
-            { email: 'finance@transitops.com', password: hashedPassword, role: 'Financial Analyst' }
+            { name: 'Lijo Felix', email: 'manager@transitops.com', password: hashedPassword, role: 'Fleet Manager' },
+            { name: 'Alex Logan', email: 'driver@transitops.com', password: hashedPassword, role: 'Driver' },
+            { name: 'Sarah Jenkins', email: 'safety@transitops.com', password: hashedPassword, role: 'Safety Officer' },
+            { name: 'David Vance', email: 'finance@transitops.com', password: hashedPassword, role: 'Financial Analyst' }
         ];
 
         // Insert into database

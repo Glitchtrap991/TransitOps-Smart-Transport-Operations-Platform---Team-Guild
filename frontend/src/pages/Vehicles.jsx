@@ -4,8 +4,9 @@ import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Up
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
+import API_BASE_URL from '../config/api';
 
-const API_BASE = 'http://localhost:5000/api/vehicles';
+const API_BASE = `${API_BASE_URL}/vehicles`;
 
 const VEHICLE_STATUSES = ['All', 'Available', 'On Trip', 'In Shop', 'Retired'];
 const VEHICLE_TYPES = ['Truck', 'Van', 'Bus', 'Trailer', 'Pickup', 'Tanker'];
@@ -136,11 +137,12 @@ export default function Vehicles() {
         );
         toast.success('Vehicle updated successfully.');
       } else {
-        setVehicles((prev) => [...prev, saved]);
-        toast.success('Vehicle added successfully.');
+        setVehicles((prev) => [saved, ...prev]);
+        toast.success('✅ Vehicle added to fleet!');
       }
 
       closeModal();
+      fetchVehicles();
     } catch {
       toast.error('Network error — is the backend running?');
     } finally {

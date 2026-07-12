@@ -1,7 +1,7 @@
 {
-    "installCommand": "cd TransitOps/frontend && npm install",
-    "buildCommand": "cd TransitOps/frontend && npm run build",
-    "outputDirectory": "TransitOps/frontend/dist",
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
     "rewrites": [
         {
             "source": "/(.*)",

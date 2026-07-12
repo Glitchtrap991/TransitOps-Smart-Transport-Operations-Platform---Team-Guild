@@ -13,9 +13,9 @@ const generateToken = (id) => {
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { name, email, password, role } = req.body;
 
-    if (!email || !password || !role) {
+    if (!name || !email || !password || !role) {
       return res.status(400).json({ message: 'Please add all fields' });
     }
 
@@ -30,6 +30,7 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = await User.create({
+      name,
       email,
       password: hashedPassword,
       role,
@@ -38,6 +39,7 @@ const register = async (req, res) => {
     if (user) {
       res.status(201).json({
         _id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
         token: generateToken(user._id),
@@ -62,6 +64,7 @@ const login = async (req, res) => {
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
         _id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
         token: generateToken(user._id),

@@ -16,18 +16,35 @@ const resetDemoDatabase = async (req, res) => {
     await MaintenanceLog.deleteMany({});
     await ExpenseLog.deleteMany({});
 
-    // 2. Insert 10 Vehicles
+    // 2. Insert 20 Vehicles
     const vehiclesData = [
-      { registrationNumber: 'VAN-05', model: 'Ford Transit', type: 'Van', maxLoadCapacity: 500, odometer: 45000, acquisitionCost: 35000, status: 'Available' },
-      { registrationNumber: 'TRK-01', model: 'Volvo FH16', type: 'Truck', maxLoadCapacity: 10000, odometer: 125000, acquisitionCost: 120000, status: 'Available' },
-      { registrationNumber: 'TRK-02', model: 'Mercedes Actros', type: 'Truck', maxLoadCapacity: 8000, odometer: 95000, acquisitionCost: 110000, status: 'On Trip' },
-      { registrationNumber: 'BUS-01', model: 'Volvo 9900', type: 'Bus', maxLoadCapacity: 2000, odometer: 50000, acquisitionCost: 85000, status: 'Available' },
-      { registrationNumber: 'VAN-02', model: 'Mercedes Sprinter', type: 'Van', maxLoadCapacity: 1200, odometer: 30000, acquisitionCost: 40000, status: 'Available' },
-      { registrationNumber: 'TRL-01', model: 'Krone Profiliner', type: 'Trailer', maxLoadCapacity: 9000, odometer: 60000, acquisitionCost: 50000, status: 'In Shop' },
-      { registrationNumber: 'PCK-01', model: 'Ford F-150', type: 'Pickup', maxLoadCapacity: 800, odometer: 15000, acquisitionCost: 30000, status: 'Available' },
-      { registrationNumber: 'TNK-01', model: 'Scania R500', type: 'Tanker', maxLoadCapacity: 10000, odometer: 200000, acquisitionCost: 150000, status: 'Retired' },
-      { registrationNumber: 'VAN-03', model: 'VW Crafter', type: 'Van', maxLoadCapacity: 1000, odometer: 20000, acquisitionCost: 38000, status: 'Available' },
-      { registrationNumber: 'TRK-03', model: 'MAN TGX', type: 'Truck', maxLoadCapacity: 8500, odometer: 80000, acquisitionCost: 105000, status: 'On Trip' },
+      // Available (10)
+      { registrationNumber: 'VAN-05', model: 'Ford Transit', type: 'Van', maxLoadCapacity: 500, odometer: 45000, acquisitionCost: 25000, status: 'Available' },
+      { registrationNumber: 'TRK-101', model: 'Volvo FH16', type: 'Truck', maxLoadCapacity: 18000, odometer: 15000, acquisitionCost: 120000, status: 'Available' },
+      { registrationNumber: 'TRK-102', model: 'Mercedes Actros', type: 'Truck', maxLoadCapacity: 15000, odometer: 22000, acquisitionCost: 110000, status: 'Available' },
+      { registrationNumber: 'VAN-103', model: 'Ford Transit-01', type: 'Van', maxLoadCapacity: 1200, odometer: 8000, acquisitionCost: 32000, status: 'Available' },
+      { registrationNumber: 'VAN-104', model: 'Ford Transit-02', type: 'Van', maxLoadCapacity: 1200, odometer: 9500, acquisitionCost: 32000, status: 'Available' },
+      { registrationNumber: 'TRK-105', model: 'Isuzu NPR', type: 'Truck', maxLoadCapacity: 4500, odometer: 54000, acquisitionCost: 45000, status: 'Available' },
+      { registrationNumber: 'TRK-106', model: 'Scania R500', type: 'Truck', maxLoadCapacity: 20000, odometer: 32000, acquisitionCost: 145000, status: 'Available' },
+      { registrationNumber: 'TRK-107', model: 'Kenworth W900', type: 'Truck', maxLoadCapacity: 22000, odometer: 11000, acquisitionCost: 155000, status: 'Available' },
+      { registrationNumber: 'TRK-108', model: 'Mack Anthem', type: 'Truck', maxLoadCapacity: 19000, odometer: 19000, acquisitionCost: 135000, status: 'Available' },
+      { registrationNumber: 'TRK-109', model: 'Freightliner Cascadia', type: 'Truck', maxLoadCapacity: 21000, odometer: 26000, acquisitionCost: 140000, status: 'Available' },
+      
+      // On Trip (5)
+      { registrationNumber: 'TRK-110', model: 'Volvo FH16', type: 'Truck', maxLoadCapacity: 18000, odometer: 45000, acquisitionCost: 120000, status: 'On Trip' },
+      { registrationNumber: 'TRK-111', model: 'Mercedes Actros', type: 'Truck', maxLoadCapacity: 15000, odometer: 60000, acquisitionCost: 110000, status: 'On Trip' },
+      { registrationNumber: 'TRK-112', model: 'Scania R500', type: 'Truck', maxLoadCapacity: 20000, odometer: 85000, acquisitionCost: 145000, status: 'On Trip' },
+      { registrationNumber: 'TRK-113', model: 'Kenworth W900', type: 'Truck', maxLoadCapacity: 22000, odometer: 105000, acquisitionCost: 155000, status: 'On Trip' },
+      { registrationNumber: 'TRK-114', model: 'Mack Anthem', type: 'Truck', maxLoadCapacity: 19000, odometer: 120000, acquisitionCost: 135000, status: 'On Trip' },
+
+      // In Shop (3)
+      { registrationNumber: 'VAN-115', model: 'Mercedes Sprinter', type: 'Van', maxLoadCapacity: 1200, odometer: 30000, acquisitionCost: 40000, status: 'In Shop' },
+      { registrationNumber: 'VAN-116', model: 'Ford Transit', type: 'Van', maxLoadCapacity: 1500, odometer: 42000, acquisitionCost: 38000, status: 'In Shop' },
+      { registrationNumber: 'VAN-117', model: 'VW Crafter', type: 'Van', maxLoadCapacity: 1000, odometer: 20000, acquisitionCost: 35000, status: 'In Shop' },
+
+      // Retired (2)
+      { registrationNumber: 'VAN-118', model: 'Chevrolet Express 2018', type: 'Van', maxLoadCapacity: 1200, odometer: 250000, acquisitionCost: 28000, status: 'Retired' },
+      { registrationNumber: 'TRK-119', model: 'Peterbilt 379', type: 'Truck', maxLoadCapacity: 18000, odometer: 600000, acquisitionCost: 95000, status: 'Retired' },
     ];
     const createdVehicles = await Vehicle.insertMany(vehiclesData);
 
@@ -83,11 +100,11 @@ const resetDemoDatabase = async (req, res) => {
     }
     await ExpenseLog.insertMany(expensesData);
 
-    // 6. Insert 3 Closed Maintenance Records
+    // 6. Insert 3 Closed/Open Maintenance Records
     const maintenanceData = [
-      { vehicle: createdVehicles[0]._id, description: 'Oil change and filter replacement', cost: 150, status: 'Closed' },
-      { vehicle: createdVehicles[1]._id, description: 'Brake pads replacement', cost: 450, status: 'Closed' },
-      { vehicle: createdVehicles[3]._id, description: 'Tire rotation and alignment', cost: 200, status: 'Closed' },
+      { vehicle: createdVehicles[15]._id, description: 'Oil change and filter replacement', cost: 150, status: 'Open' },
+      { vehicle: createdVehicles[16]._id, description: 'Brake pads replacement', cost: 450, status: 'Open' },
+      { vehicle: createdVehicles[17]._id, description: 'Tire rotation and alignment', cost: 200, status: 'Open' },
     ];
     await MaintenanceLog.insertMany(maintenanceData);
 

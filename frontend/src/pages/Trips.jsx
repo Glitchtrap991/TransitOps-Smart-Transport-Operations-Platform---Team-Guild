@@ -5,8 +5,9 @@ import { Search, Plus, MapPin, Filter, Play, CheckCircle2, XCircle, AlertCircle,
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
+import API_BASE_URL from '../config/api';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = API_BASE_URL;
 
 const TRIP_STATUSES = ['All', 'Active', 'Pending', 'Completed', 'Cancelled'];
 

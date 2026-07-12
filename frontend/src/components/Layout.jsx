@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -34,7 +35,7 @@ export default function Layout() {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        const { data } = await axios.get('http://localhost:5000/api/analytics/system-alerts', {
+        const { data } = await axios.get(`${API_BASE_URL}/analytics/system-alerts`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAlerts(data);
@@ -56,7 +57,7 @@ export default function Layout() {
   const handleResetDemo = async () => {
     if (window.confirm("Reset database to default hackathon demo state?")) {
       try {
-        await axios.post('http://localhost:5000/api/demo/reset');
+        await axios.post(`${API_BASE_URL}/demo/reset`);
         toast.success("✅ Database refreshed with realistic fleet data!");
         setTimeout(() => window.location.reload(), 1000);
       } catch (error) {
@@ -227,10 +228,17 @@ export default function Layout() {
               )}
             </div>
 
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400 hidden sm:inline-block">
-              Welcome back
-            </span>
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-sm ring-2 ring-white dark:ring-slate-800" />
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex flex-col text-right">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Welcome back, {user?.name || 'User'}
+                </span>
+                <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                  {user?.role || 'Guest'}
+                </span>
+              </div>
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-sm ring-2 ring-white dark:ring-slate-800" />
+            </div>
           </div>
         </header>
 
