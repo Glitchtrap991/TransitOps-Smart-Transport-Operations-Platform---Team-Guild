@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Upload, ArrowUpDown, CheckCircle } from 'lucide-react';
+import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Upload, ArrowUpDown, CheckCircle, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
@@ -34,6 +34,7 @@ export default function Vehicles() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [currentDocsVehicle, setCurrentDocsVehicle] = useState(null);
@@ -124,7 +125,9 @@ export default function Vehicles() {
 
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.message || 'Something went wrong');
+        const message = data.message || 'Something went wrong';
+        setServerError(message);
+        toast.error(message);
         setSubmitting(false);
         return;
       }
@@ -144,7 +147,9 @@ export default function Vehicles() {
       closeModal();
       fetchVehicles();
     } catch {
-      toast.error('Network error — is the backend running?');
+      const message = 'Network error — is the backend running?';
+      setServerError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -183,6 +188,39 @@ export default function Vehicles() {
     }
   };
 
+  // ---------- Export current view to CSV ----------
+  const handleExportCSV = () => {
+    if (processedVehicles.length === 0) {
+      toast.error('No vehicles to export.');
+      return;
+    }
+
+    const headers = ['Registration #', 'Model', 'Type', 'Max Load (kg)', 'Odometer', 'Acquisition Cost', 'Status'];
+    const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+    const rows = processedVehicles.map((v) => [
+      v.registrationNumber,
+      v.model,
+      v.type,
+      v.maxLoadCapacity,
+      v.odometer,
+      v.acquisitionCost,
+      v.status,
+    ].map(escape).join(','));
+
+    const csv = [headers.map(escape).join(','), ...rows].join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vehicles-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${processedVehicles.length} vehicle${processedVehicles.length !== 1 ? 's' : ''} to CSV.`);
+  };
+
   // ---------- Delete ----------
   const handleDelete = async (id) => {
     if (!confirm('Delete this vehicle?')) return;
@@ -202,6 +240,7 @@ export default function Vehicles() {
     setEditingId(null);
     setForm(emptyForm);
     setFormErrors({});
+    setServerError('');
     setModalOpen(true);
   };
 
@@ -217,6 +256,7 @@ export default function Vehicles() {
       status: vehicle.status,
     });
     setFormErrors({});
+    setServerError('');
     setModalOpen(true);
   };
 
@@ -225,6 +265,7 @@ export default function Vehicles() {
     setEditingId(null);
     setForm(emptyForm);
     setFormErrors({});
+    setServerError('');
   };
 
   // ---------- Field change ----------
@@ -261,13 +302,22 @@ export default function Vehicles() {
             Manage your fleet — {vehicles.length} vehicle{vehicles.length !== 1 && 's'}
           </p>
         </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
-        >
-          <Plus className="h-4 w-4" />
-          Add Vehicle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all duration-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <Plus className="h-4 w-4" />
+            Add Vehicle
+          </button>
+        </div>
       </div>
 
       {/* -------- Toolbar -------- */}
@@ -424,6 +474,12 @@ export default function Vehicles() {
         title={editingId ? 'Edit Vehicle' : 'Add Vehicle'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {serverError && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>{serverError}</span>
+            </div>
+          )}
           {/* Registration # */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
