@@ -45,6 +45,11 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/demo', demoRoutes);
 
+app.use((err, req, res, next) => {
+  console.error("CRITICAL BACKEND CRASH:", err.stack);
+  res.status(500).json({ error: "Internal Server Error", details: err.message });
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, console.log(`Server running on port ${PORT}`));

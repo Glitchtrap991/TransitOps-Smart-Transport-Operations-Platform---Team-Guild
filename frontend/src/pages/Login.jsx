@@ -30,6 +30,7 @@ export default function Login() {
       login(data);
       navigate('/');
     } catch (err) {
+      console.error("Login Error Details:", err.response?.data || err.message);
       setError(err.response?.data?.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
