@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, DollarSign, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -19,7 +20,6 @@ export default function Expenses() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,15 +43,15 @@ export default function Expenses() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     try {
       setSubmitting(true);
       const { data } = await axios.post(`${API_BASE}/expenses`, form);
       setExpenses([data, ...expenses]);
       setModalOpen(false);
       setForm(emptyForm);
+      toast.success('Expense logged successfully.');
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to log expense');
+      toast.error(err.response?.data?.message || 'Failed to log expense');
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +71,7 @@ export default function Expenses() {
           </p>
         </div>
         <button
-          onClick={() => { setModalOpen(true); setFormError(''); }}
+          onClick={() => { setModalOpen(true); }}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
         >
           <Plus className="h-5 w-5" />
@@ -135,13 +135,6 @@ export default function Expenses() {
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Log Manual Expense">
         <form onSubmit={handleSubmit} className="space-y-5">
-          {formError && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400 ring-1 ring-red-500/20">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              {formError}
-            </div>
-          )}
-
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Select Vehicle</label>
             <select

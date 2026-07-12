@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Upload } from 'lucide-react';
+import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 
@@ -27,7 +28,6 @@ export default function Vehicles() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
-  const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [currentDocsVehicle, setCurrentDocsVehicle] = useState(null);
@@ -100,7 +100,7 @@ export default function Vehicles() {
 
       if (!res.ok) {
         const data = await res.json();
-        setServerError(data.message || 'Something went wrong');
+        toast.error(data.message || 'Something went wrong');
         setSubmitting(false);
         return;
       }
@@ -111,13 +111,15 @@ export default function Vehicles() {
         setVehicles((prev) =>
           prev.map((v) => (v._id === editingId ? saved : v))
         );
+        toast.success('Vehicle updated successfully.');
       } else {
         setVehicles((prev) => [...prev, saved]);
+        toast.success('Vehicle added successfully.');
       }
 
       closeModal();
     } catch {
-      setServerError('Network error — is the backend running?');
+      toast.error('Network error — is the backend running?');
     } finally {
       setSubmitting(false);
     }
@@ -145,9 +147,12 @@ export default function Vehicles() {
         setVehicles(prev => prev.map(v => v._id === updatedVehicle._id ? updatedVehicle : v));
         setCurrentDocsVehicle(updatedVehicle);
         setDocForm({ title: '', fileUrl: '' });
+        toast.success('Document attached successfully.');
+      } else {
+        toast.error('Failed to attach document.');
       }
     } catch {
-      // silent
+      toast.error('Network error attaching document.');
     } finally {
       setUploadingDoc(false);
     }
@@ -158,9 +163,12 @@ export default function Vehicles() {
     if (!confirm('Delete this vehicle?')) return;
     try {
       const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
-      if (res.ok) setVehicles((prev) => prev.filter((v) => v._id !== id));
+      if (res.ok) {
+        setVehicles((prev) => prev.filter((v) => v._id !== id));
+        toast.success('Vehicle deleted.');
+      }
     } catch {
-      /* silent */
+      toast.error('Failed to delete vehicle.');
     }
   };
 
@@ -169,7 +177,6 @@ export default function Vehicles() {
     setEditingId(null);
     setForm(emptyForm);
     setFormErrors({});
-    setServerError('');
     setModalOpen(true);
   };
 
@@ -185,7 +192,6 @@ export default function Vehicles() {
       status: vehicle.status,
     });
     setFormErrors({});
-    setServerError('');
     setModalOpen(true);
   };
 
@@ -194,7 +200,6 @@ export default function Vehicles() {
     setEditingId(null);
     setForm(emptyForm);
     setFormErrors({});
-    setServerError('');
   };
 
   // ---------- Field change ----------
@@ -373,13 +378,6 @@ export default function Vehicles() {
         title={editingId ? 'Edit Vehicle' : 'Add Vehicle'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {serverError && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {serverError}
-            </div>
-          )}
-
           {/* Registration # */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">

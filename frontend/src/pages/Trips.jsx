@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Search, Plus, MapPin, Filter, Play, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 
@@ -39,7 +40,6 @@ export default function Trips() {
   const [tripForm, setTripForm] = useState(emptyTripForm);
   const [completeForm, setCompleteForm] = useState(emptyCompleteForm);
   
-  const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // ---------- Fetch Data ----------
@@ -79,12 +79,11 @@ export default function Trips() {
   // ---------- Create Trip ----------
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
 
     // Dynamic validation for max weight
     const selectedVehicle = vehicles.find(v => v._id === tripForm.vehicle);
     if (selectedVehicle && Number(tripForm.cargoWeight) > selectedVehicle.maxLoadCapacity) {
-      setFormError(`Cargo weight exceeds vehicle capacity (${selectedVehicle.maxLoadCapacity} kg).`);
+      toast.error('❌ Cargo weight exceeds maximum vehicle capacity!');
       return;
     }
 
@@ -94,8 +93,9 @@ export default function Trips() {
       setTrips(prev => [data, ...prev]);
       setCreateModalOpen(false);
       setTripForm(emptyTripForm);
+      toast.success('Trip created successfully!');
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to create trip');
+      toast.error(err.response?.data?.message || 'Failed to create trip');
     } finally {
       setSubmitting(false);
     }
@@ -103,12 +103,12 @@ export default function Trips() {
 
   // ---------- Dispatch Trip ----------
   const handleDispatch = async (id) => {
-    if (!window.confirm('Dispatch this trip now?')) return;
     try {
       const { data } = await axios.put(`${API_BASE}/trips/${id}/dispatch`);
       setTrips(prev => prev.map(t => t._id === id ? data : t));
+      toast.success('🚀 Trip Dispatched! Vehicle & Driver marked On Trip.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to dispatch trip');
+      toast.error(err.response?.data?.message || 'Failed to dispatch trip');
     }
   };
 
@@ -116,20 +116,19 @@ export default function Trips() {
   const openCompleteModal = (id) => {
     setSelectedTripId(id);
     setCompleteForm(emptyCompleteForm);
-    setFormError('');
     setCompleteModalOpen(true);
   };
 
   const handleCompleteSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     try {
       setSubmitting(true);
       const { data } = await axios.put(`${API_BASE}/trips/${selectedTripId}/complete`, completeForm);
       setTrips(prev => prev.map(t => t._id === selectedTripId ? data : t));
       setCompleteModalOpen(false);
+      toast.success('Trip completed successfully!');
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to complete trip');
+      toast.error(err.response?.data?.message || 'Failed to complete trip');
     } finally {
       setSubmitting(false);
     }
@@ -137,12 +136,12 @@ export default function Trips() {
 
   // ---------- Cancel Trip ----------
   const handleCancel = async (id) => {
-    if (!window.confirm('Are you sure you want to cancel this trip?')) return;
     try {
       const { data } = await axios.put(`${API_BASE}/trips/${id}/cancel`);
       setTrips(prev => prev.map(t => t._id === id ? data : t));
+      toast.success('Trip cancelled successfully.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel trip');
+      toast.error(err.response?.data?.message || 'Failed to cancel trip');
     }
   };
 
@@ -162,7 +161,7 @@ export default function Trips() {
           </p>
         </div>
         <button
-          onClick={() => { setCreateModalOpen(true); setFormError(''); }}
+          onClick={() => { setCreateModalOpen(true); }}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
         >
           <Plus className="h-5 w-5" />
@@ -315,13 +314,6 @@ export default function Trips() {
       {/* -------- Create Trip Modal -------- */}
       <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create New Trip">
         <form onSubmit={handleCreateSubmit} className="space-y-5">
-          {formError && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400 ring-1 ring-red-500/20">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              {formError}
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Source</label>
@@ -424,13 +416,6 @@ export default function Trips() {
       {/* -------- Complete Trip Modal -------- */}
       <Modal isOpen={completeModalOpen} onClose={() => setCompleteModalOpen(false)} title="Complete Trip & Log Fuel">
         <form onSubmit={handleCompleteSubmit} className="space-y-5">
-          {formError && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400 ring-1 ring-red-500/20">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              {formError}
-            </div>
-          )}
-          
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Final Odometer Reading</label>
             <input

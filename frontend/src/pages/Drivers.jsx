@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Search, Plus, Users, UserPlus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 
@@ -49,7 +50,6 @@ export default function Drivers() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,17 +78,15 @@ export default function Drivers() {
   // Handle form input changes
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setFormError('');
   };
 
   // Submit new driver
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
 
     // Client-side validation
     if (!form.name.trim() || !form.licenseNumber.trim() || !form.licenseExpiryDate || !form.contactNumber.trim()) {
-      setFormError('Please fill in all required fields.');
+      toast.error('Please fill in all required fields.');
       return;
     }
 
@@ -102,9 +100,10 @@ export default function Drivers() {
       setDrivers((prev) => [...prev, data]);
       setForm(emptyForm);
       setModalOpen(false);
+      toast.success('Driver created successfully.');
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to create driver';
-      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -269,14 +268,8 @@ export default function Drivers() {
       </div>
 
       {/* Add Driver Modal */}
-      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setFormError(''); }} title="Add New Driver">
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); }} title="Add New Driver">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {formError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
-              {formError}
-            </div>
-          )}
-
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Full Name <span className="text-red-500">*</span>
@@ -369,7 +362,7 @@ export default function Drivers() {
           <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
             <button
               type="button"
-              onClick={() => { setModalOpen(false); setFormError(''); }}
+              onClick={() => { setModalOpen(false); }}
               className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
             >
               Cancel

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Plus, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
 
@@ -19,7 +20,6 @@ export default function Maintenance() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -44,7 +44,6 @@ export default function Maintenance() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
     try {
       setSubmitting(true);
       const { data } = await axios.post(`${API_BASE}/maintenance`, form);
@@ -53,8 +52,9 @@ export default function Maintenance() {
       setForm(emptyForm);
       // Remove vehicle from available vehicles list
       setVehicles(vehicles.filter(v => v._id !== form.vehicle));
+      toast.success('🔧 Vehicle moved to In Shop status.');
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to create log');
+      toast.error(err.response?.data?.message || 'Failed to create log');
     } finally {
       setSubmitting(false);
     }
@@ -66,8 +66,9 @@ export default function Maintenance() {
       const { data } = await axios.put(`${API_BASE}/maintenance/${id}/close`);
       setLogs(logs.map(log => log._id === id ? data : log));
       fetchData(); // Refresh available vehicles
+      toast.success('Repair resolved. Vehicle is Available.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to close log');
+      toast.error(err.response?.data?.message || 'Failed to close log');
     }
   };
 
@@ -85,7 +86,7 @@ export default function Maintenance() {
           </p>
         </div>
         <button
-          onClick={() => { setModalOpen(true); setFormError(''); }}
+          onClick={() => { setModalOpen(true); }}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-200 hover:-translate-y-0.5"
         >
           <Plus className="h-5 w-5" />
@@ -160,13 +161,6 @@ export default function Maintenance() {
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Log New Repair / Maintenance">
         <form onSubmit={handleSubmit} className="space-y-5">
-          {formError && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400 ring-1 ring-red-500/20">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              {formError}
-            </div>
-          )}
-
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Select Available Vehicle</label>
             <select

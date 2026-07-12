@@ -1,6 +1,7 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   Sun,
   Moon,
@@ -16,30 +17,16 @@ import {
 } from 'lucide-react';
 
 export default function Layout() {
-  const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useContext(AuthContext);
-
-  const toggleDark = () => {
-    setDarkMode((prev) => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      return next;
-    });
-  };
+  const { theme, toggleTheme } = useTheme();
+  const darkMode = theme === 'dark';
 
   const navLinks = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/vehicles', label: 'Vehicles', icon: Truck },
-    { to: '/drivers', label: 'Drivers', icon: Users },
-    { to: '/trips', label: 'Trips', icon: MapPin },
-    { to: '/maintenance', label: 'Maintenance', icon: Wrench },
-    { to: '/expenses', label: 'Expenses', icon: DollarSign },
-    { to: '/reports', label: 'Reports', icon: FileText },
+    { to: '/', label: 'Command Center', icon: LayoutDashboard },
+    { to: '/fleet', label: 'Fleet & Drivers', icon: Users },
+    { to: '/operations', label: 'Operations', icon: MapPin },
+    { to: '/logs', label: 'Logs & Expenses', icon: Wrench },
   ];
 
   return (
@@ -107,15 +94,20 @@ export default function Layout() {
             </div>
           )}
           <button
-            onClick={toggleDark}
-            className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200 transition-all duration-200"
+            onClick={toggleTheme}
+            className="flex w-full items-center justify-between rounded-2xl border border-slate-200/50 bg-slate-50/50 px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-100 dark:border-slate-700/50 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-700"
           >
-            {darkMode ? (
-              <Sun className="h-5 w-5 text-amber-500" />
-            ) : (
-              <Moon className="h-5 w-5 text-indigo-500" />
-            )}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
+            <span className="flex items-center gap-3.5">
+              {darkMode ? (
+                <Sun className="h-5 w-5 text-amber-500" />
+              ) : (
+                <Moon className="h-5 w-5 text-indigo-500" />
+              )}
+              {darkMode ? 'Light Mode' : 'Dark Mode'}
+            </span>
+            <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${darkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 ${darkMode ? 'translate-x-4.5' : 'translate-x-1'}`} />
+            </div>
           </button>
           
           <button

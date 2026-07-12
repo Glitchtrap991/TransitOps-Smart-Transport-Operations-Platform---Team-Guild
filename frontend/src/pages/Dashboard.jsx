@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
+import Reports from './Reports';
 
 const API_BASE = 'http://localhost:5000/api';
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -191,6 +192,11 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* Embedded Reports Section */}
+      <div className="mt-8 pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
+        <Reports />
       </div>
     </div>
   );
