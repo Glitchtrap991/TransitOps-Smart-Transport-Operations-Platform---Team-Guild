@@ -21,12 +21,16 @@ app.get('/', (req, res) => {
 });
 
 // Import Routes
+const authRoutes = require('./routes/auth');
 const vehicleRoutes = require('./routes/vehicles');
 const driverRoutes = require('./routes/drivers');
+const tripRoutes = require('./routes/trips');
 
 // Mount Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use('/api/trips', tripRoutes);
 
 const PORT = process.env.PORT || 5000;
 
