@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+// const { protect } = require('../middleware/authMiddleware');
 const {
   getMaintenanceLogs,
   createLog,
@@ -8,9 +8,9 @@ const {
 } = require('../controllers/maintenanceController');
 
 router.route('/')
-  .get(protect, getMaintenanceLogs)
-  .post(protect, createLog);
+  .get(getMaintenanceLogs)
+  .post(createLog);
 
-router.put('/:id/close', protect, closeLog);
+router.put('/:id/close', closeLog);
 
 module.exports = router;

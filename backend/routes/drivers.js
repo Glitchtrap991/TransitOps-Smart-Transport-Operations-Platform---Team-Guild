@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+// const { protect } = require('../middleware/authMiddleware');
 const {
   getDrivers,
   createDriver,
@@ -8,8 +8,8 @@ const {
   deleteDriver,
 } = require('../controllers/driverController');
 
-// All routes are protected
-router.route('/').get(protect, getDrivers).post(protect, createDriver);
-router.route('/:id').put(protect, updateDriver).delete(protect, deleteDriver);
+// All routes are public
+router.route('/').get(getDrivers).post(createDriver);
+router.route('/:id').put(updateDriver).delete(deleteDriver);
 
 module.exports = router;

@@ -13,8 +13,8 @@ export const AuthProvider = ({ children }) => {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      // Set default auth header for all future axios requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${parsedUser.token}`;
+      // Removed auth header attachment to make app public
+      // axios.defaults.headers.common['Authorization'] = `Bearer ${parsedUser.token}`;
     }
     setLoading(false);
   }, []);
@@ -22,13 +22,14 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+    // Removed auth header attachment to make app public
+    // axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
   };
 
   const logout = () => {
     localStorage.removeItem('user');
     setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
+    // delete axios.defaults.headers.common['Authorization'];
   };
 
   return (

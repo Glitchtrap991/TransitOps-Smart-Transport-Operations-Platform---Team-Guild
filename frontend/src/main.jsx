@@ -40,12 +40,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Routes>
             <Route path="/login" element={<Login />} />
             
-            {/* Protected Routes wrapped in Layout */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
+            {/* Public Routes wrapped in Layout */}
+            <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="fleet" element={<FleetRegistry />} />
               <Route path="operations" element={<Trips />} />
