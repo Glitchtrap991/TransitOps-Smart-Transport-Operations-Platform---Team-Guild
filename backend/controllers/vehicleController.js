@@ -108,4 +108,29 @@ const deleteVehicle = async (req, res) => {
   }
 };
 
-module.exports = { getVehicles, createVehicle, updateVehicle, deleteVehicle };
+// @desc    Add document to vehicle
+// @route   POST /api/vehicles/:id/documents
+// @access  Protected
+const addDocument = async (req, res) => {
+  try {
+    const { title, fileUrl } = req.body;
+    
+    if (!title || !fileUrl) {
+      return res.status(400).json({ message: 'Title and fileUrl are required' });
+    }
+
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
+
+    vehicle.documents.push({ title, fileUrl });
+    await vehicle.save();
+
+    res.status(201).json(vehicle);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { getVehicles, createVehicle, updateVehicle, deleteVehicle, addDocument };

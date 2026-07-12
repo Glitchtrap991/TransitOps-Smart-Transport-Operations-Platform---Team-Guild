@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Truck, Filter, Edit2, Trash2, AlertCircle, FolderOpen, Upload } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 
@@ -29,6 +29,10 @@ export default function Vehicles() {
   const [formErrors, setFormErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [currentDocsVehicle, setCurrentDocsVehicle] = useState(null);
+  const [docForm, setDocForm] = useState({ title: '', fileUrl: '' });
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   // ---------- Fetch vehicles ----------
   const fetchVehicles = useCallback(async () => {
@@ -116,6 +120,36 @@ export default function Vehicles() {
       setServerError('Network error — is the backend running?');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ---------- Docs ----------
+  const openDocs = (vehicle) => {
+    setCurrentDocsVehicle(vehicle);
+    setDocForm({ title: '', fileUrl: '' });
+    setDocsModalOpen(true);
+  };
+
+  const handleUploadDoc = async (e) => {
+    e.preventDefault();
+    if (!docForm.title || !docForm.fileUrl) return;
+    setUploadingDoc(true);
+    try {
+      const res = await fetch(`${API_BASE}/${currentDocsVehicle._id}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(docForm),
+      });
+      if (res.ok) {
+        const updatedVehicle = await res.json();
+        setVehicles(prev => prev.map(v => v._id === updatedVehicle._id ? updatedVehicle : v));
+        setCurrentDocsVehicle(updatedVehicle);
+        setDocForm({ title: '', fileUrl: '' });
+      }
+    } catch {
+      // silent
+    } finally {
+      setUploadingDoc(false);
     }
   };
 
@@ -301,6 +335,13 @@ export default function Vehicles() {
                     </td>
                     <td className="whitespace-nowrap px-6 py-3.5 text-right">
                       <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => openDocs(v)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-colors"
+                          title="Documents"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => openEdit(v)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors"
@@ -488,6 +529,45 @@ export default function Vehicles() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* -------- Docs Modal -------- */}
+      <Modal
+        isOpen={docsModalOpen}
+        onClose={() => setDocsModalOpen(false)}
+        title={`Documents: ${currentDocsVehicle?.registrationNumber || ''}`}
+      >
+        <div className="space-y-6">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800 border-b border-slate-100 dark:border-slate-800 pb-4 max-h-60 overflow-y-auto">
+            {currentDocsVehicle?.documents?.length > 0 ? (
+              currentDocsVehicle.documents.map((doc, i) => (
+                <li key={i} className="flex items-center justify-between py-3 text-sm">
+                  <span className="font-medium text-slate-900 dark:text-white">{doc.title}</span>
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View
+                  </a>
+                </li>
+              ))
+            ) : (
+              <li className="py-4 text-center text-sm text-slate-500">No documents attached.</li>
+            )}
+          </ul>
+          
+          <form onSubmit={handleUploadDoc} className="space-y-4">
+            <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Upload New Document</h4>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">Document Title</label>
+              <input required value={docForm.title} onChange={e => setDocForm({...docForm, title: e.target.value})} className={inputClass('title')} placeholder="e.g. Insurance 2026" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">File URL (Mocked Upload)</label>
+              <input required value={docForm.fileUrl} onChange={e => setDocForm({...docForm, fileUrl: e.target.value})} className={inputClass('fileUrl')} placeholder="https://example.com/file.pdf" />
+            </div>
+            <button type="submit" disabled={uploadingDoc} className="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition-colors">
+              <Upload className="h-4 w-4" /> {uploadingDoc ? 'Uploading...' : 'Attach Document'}
+            </button>
+          </form>
+        </div>
       </Modal>
     </div>
   );

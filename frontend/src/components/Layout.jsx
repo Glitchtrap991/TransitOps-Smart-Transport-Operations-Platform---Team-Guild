@@ -12,6 +12,7 @@ import {
   DollarSign,
   Menu,
   LogOut,
+  FileText,
 } from 'lucide-react';
 
 export default function Layout() {
@@ -38,6 +39,7 @@ export default function Layout() {
     { to: '/trips', label: 'Trips', icon: MapPin },
     { to: '/maintenance', label: 'Maintenance', icon: Wrench },
     { to: '/expenses', label: 'Expenses', icon: DollarSign },
+    { to: '/reports', label: 'Reports', icon: FileText },
   ];
 
   return (

@@ -12,6 +12,11 @@ const vehicleSchema = new mongoose.Schema({
     enum: ['Available', 'On Trip', 'In Shop', 'Retired'],
     default: 'Available',
   },
+  documents: [{
+    title: { type: String, required: true },
+    fileUrl: { type: String, required: true },
+    uploadDate: { type: Date, default: Date.now }
+  }],
 });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);
